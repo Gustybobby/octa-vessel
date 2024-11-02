@@ -97,7 +97,7 @@ def find_neighborhood_graph(skeleton_image, beps: list[tuple[int, int]]):
             stack.append((x_curr, y_curr - 1))
             stack.append((x_curr - 1, y_curr + 1))
             stack.append((x_curr - 1, y_curr))
-            stack.append((x_curr - 1, y_curr + 1))
+            stack.append((x_curr - 1, y_curr - 1))
 
     return graph, bp_info_map
 
