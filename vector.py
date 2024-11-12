@@ -47,3 +47,19 @@ def norm_dot(v1: tuple[int, int], v2: tuple[int, int]) -> float:
     x1, y1 = v1
     x2, y2 = v2
     return (x1 * x2 + y1 * y2) / (math.sqrt(x1**2 + y1**2) * math.sqrt(x2**2 + y2**2))
+
+
+def calc_pairs_end_vectors(
+    branch_segments: list, beps: list[tuple[int, int]], pair_label, depth: int
+):
+    for l1 in range(len(pair_label)):
+        for l2 in range(len(pair_label[l1])):
+            if pair_label[l1][l2] is None or "vectors" in pair_label[l2][l1]:
+                continue
+            segment = branch_segments[pair_label[l1][l2]["label"]]
+            pair_label[l1][l2]["vectors"] = find_end_vectors(
+                segment, beps[l1], beps[l2], depth
+            )
+            pair_label[l2][l1]["vectors"] = tuple(
+                reversed(pair_label[l1][l2]["vectors"])
+            )
