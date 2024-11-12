@@ -9,7 +9,9 @@ logging.basicConfig(
 )
 
 
-def find_unique_paths(graph: dict[str, set[str]], pair_label, norm_cutoff: float):
+def find_unique_paths(
+    graph: dict[str, set[str]], pair_label: list[list[dict | None]], norm_cutoff: float
+):
     all_paths: set[str] = set()
     visited: set[str] = set()
 
@@ -59,3 +61,33 @@ def find_unique_paths(graph: dict[str, set[str]], pair_label, norm_cutoff: float
 
     logging.info("found " + str(len(all_paths)) + " unique paths")
     return all_paths
+
+
+def prune_similar_paths(unique_paths: set[str], pair_label: list[list[dict | None]]):
+    pruned_unique_paths = unique_paths.copy()
+    for path in unique_paths:
+        pt_list = path.split("-")
+
+        l1, l2 = pt_list[-2], pt_list[-1]
+
+        prefix_path = "-".join(pt_list[:-1])
+        last_is_ext_or_sm = (
+            "ext" in pair_label[int(l1)][int(l2)] or pair_label[int(l1)][int(l2)]["sm"]
+        )
+        if prefix_path in unique_paths and last_is_ext_or_sm:
+            pruned_unique_paths.remove(path)
+            continue
+
+        l1, l2 = pt_list[0], pt_list[1]
+
+        suffix_path = "-".join(pt_list[1:])
+        first_is_ext_or_sm = (
+            "ext" in pair_label[int(l1)][int(l2)] or pair_label[int(l1)][int(l2)]["sm"]
+        )
+        if suffix_path in unique_paths and first_is_ext_or_sm:
+            pruned_unique_paths.remove(path)
+
+    logging.info(
+        "after similarity pruning: " + str(len(pruned_unique_paths)) + " unique paths"
+    )
+    return pruned_unique_paths

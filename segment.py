@@ -110,10 +110,12 @@ def extend_connected_branch_points(
                     pair_label[int(l1)][int(l2)] = {
                         "label": len(branch_segments),
                         "sm": True,
+                        "ext": True,
                     }
                     pair_label[int(l2)][int(l1)] = {
                         "label": len(branch_segments),
                         "sm": True,
+                        "ext": True,
                     }
 
                     segment = np.zeros(shape, dtype=np.uint8)
@@ -131,6 +133,7 @@ def segment_union(
     skeleton: np.ndarray,
     beps: list[tuple[int, int]],
     save=False,
+    overlay=False,
 ):
     logging.info("merging path segments")
     unique_paths: list[str] = sorted(list(unique_paths))
@@ -166,7 +169,8 @@ def segment_union(
 
         if save:
             plt.imsave(
-                "res/" + u_path + ".png", img.astype(np.uint16) + (skeleton * 128)
+                "res/" + u_path + ".png",
+                (img.astype(np.uint16) + (skeleton * 128)) if overlay else img,
             )
-
-    print(count)
+    if save:
+        logging.info("saved " + str(count) + " paths")
