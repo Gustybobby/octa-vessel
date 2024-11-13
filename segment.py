@@ -146,6 +146,8 @@ def segment_union(
     pair_data: list[list[SegmentPairData | None]],
     skeleton: np.ndarray,
     beps: list[tuple[int, int]],
+    frac_length_cutoff: float,
+    save_dir: str,
     save=False,
     overlay=False,
 ):
@@ -176,14 +178,14 @@ def segment_union(
         )
 
         non_zero_count = cv2.countNonZero(img)
-        if non_zero_count <= 1 / 20 * skeleton.shape[0]:
+        if non_zero_count <= frac_length_cutoff * skeleton.shape[0]:
             continue
         count += 1
         last_path = u_path
 
         if save:
             plt.imsave(
-                "res/" + str(count) + ".png",
+                save_dir + "/" + str(count) + ".png",
                 (img.astype(np.uint16) + (skeleton * 128)) if overlay else img,
             )
     if save:

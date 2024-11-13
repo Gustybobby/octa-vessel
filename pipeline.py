@@ -61,6 +61,16 @@ def find_branch_points(
     return beps, cval_to_data
 
 
+SM_THRESHOLD = 5  # px count to determine if segment is small
+VECTOR_DEPTH = 5  # depth from the end of segments to calculate the vectors
+NORM_CUTOFF = 0.75  # cosine of angle, range: (0,1)
+FRAC_LENGTH_CUTOFF = 0.05  # fraction of width to determine if the segment union is too small to be included in the results, range: (0,1)
+SAVE = False  # should save the results
+SAVE_DIR = "res"  # save directory
+SAVE_WITH_OVERLAY = True  # should show skeleton overlay
+
+DISPLAY_HIGHLIGHTED_SKELETON = False
+
 if __name__ == "__main__":
     binary_image = read_binary_image("test_images\processed_pdr (114)_0.jpg")
 
@@ -68,26 +78,29 @@ if __name__ == "__main__":
 
     branching_points, cval_data_dict = find_branch_points(skeleton)
 
-    hbeps_image = formatter.highlight_branch_points(skeleton, branching_points)
-    plt.imshow(hbeps_image)
-    plt.show()
+    if DISPLAY_HIGHLIGHTED_SKELETON:
+        hbeps_image = formatter.highlight_branch_points(skeleton, branching_points)
+        plt.imshow(hbeps_image)
+        plt.show()
 
     segments = segment.find_branch_segments(skeleton, branching_points)
 
     pair_data_arr = segment.find_segment_pair_labels(
-        segments, cval_data_dict, sm_threshold=5
+        segments, cval_data_dict, sm_threshold=SM_THRESHOLD
     )
     segment.extend_connected_branch_points(
         segments, pair_data_arr, branching_points, cval_data_dict, skeleton.shape
     )
 
-    vector.calc_pairs_end_vectors(segments, branching_points, pair_data_arr, depth=5)
+    vector.calc_pairs_end_vectors(
+        segments, branching_points, pair_data_arr, depth=VECTOR_DEPTH
+    )
 
     neighbor_graph = path.construct_neighborhood_graph(pair_data_arr)
 
     # cutoff higher = more_smooth_path
     unique_paths = path.find_unique_paths(
-        neighbor_graph, pair_data_arr, norm_cutoff=0.75, depth=5
+        neighbor_graph, pair_data_arr, norm_cutoff=NORM_CUTOFF, depth=VECTOR_DEPTH
     )
 
     unique_paths = path.prune_similar_paths(unique_paths, pair_data_arr, neighbor_graph)
@@ -98,6 +111,8 @@ if __name__ == "__main__":
         pair_data_arr,
         skeleton,
         branching_points,
-        save=True,
-        overlay=True,
+        frac_length_cutoff=FRAC_LENGTH_CUTOFF,
+        save_dir=SAVE_DIR,
+        save=SAVE,
+        overlay=SAVE_WITH_OVERLAY,
     )
