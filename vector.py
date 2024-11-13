@@ -1,4 +1,5 @@
 import math
+from classes.segment_pair_data import SegmentPairData
 
 
 def find_end_vectors(
@@ -50,16 +51,17 @@ def norm_dot(v1: tuple[int, int], v2: tuple[int, int]) -> float:
 
 
 def calc_pairs_end_vectors(
-    branch_segments: list, beps: list[tuple[int, int]], pair_label, depth: int
-):
-    for l1 in range(len(pair_label)):
-        for l2 in range(len(pair_label[l1])):
-            if pair_label[l1][l2] is None or "vectors" in pair_label[l2][l1]:
+    branch_segments: list,
+    beps: list[tuple[int, int]],
+    pair_data: list[list[SegmentPairData | None]],
+    depth: int,
+) -> None:
+    for l1 in range(len(pair_data)):
+        for l2 in range(len(pair_data[l1])):
+            if pair_data[l1][l2] is None or pair_data[l2][l1].vectors is not None:
                 continue
-            segment = branch_segments[pair_label[l1][l2]["label"]]
-            pair_label[l1][l2]["vectors"] = find_end_vectors(
+            segment = branch_segments[pair_data[l1][l2].label]
+            pair_data[l1][l2].vectors = find_end_vectors(
                 segment, beps[l1], beps[l2], depth
             )
-            pair_label[l2][l1]["vectors"] = tuple(
-                reversed(pair_label[l1][l2]["vectors"])
-            )
+            pair_data[l2][l1].vectors = tuple(reversed(pair_data[l1][l2].vectors))

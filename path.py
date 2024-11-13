@@ -1,5 +1,7 @@
 import logging
 import vector
+from classes.segment_pair_data import SegmentPairData
+from collections import defaultdict
 from tqdm import trange
 
 logging.basicConfig(
@@ -9,9 +11,25 @@ logging.basicConfig(
 )
 
 
+def construct_neighborhood_graph(
+    pair_data: list[list[SegmentPairData | None]],
+) -> dict[str, set[str]]:
+    graph = defaultdict(set)
+    for l1 in range(len(pair_data)):
+        for l2 in range(len(pair_data[l1])):
+            if pair_data[l1][l2]:
+                graph[str(l1)].add(str(l2))
+                graph[str(l2)].add(str(l1))
+
+    return graph
+
+
 def find_unique_paths(
-    graph: dict[str, set[str]], pair_label: list[list[dict | None]], norm_cutoff: float
-):
+    graph: dict[str, set[str]],
+    pair_data: list[list[SegmentPairData | None]],
+    norm_cutoff: float,
+    depth: int,
+) -> set[str]:
     all_paths: set[str] = set()
     visited: set[str] = set()
 
@@ -30,23 +48,24 @@ def find_unique_paths(
             if len(new_path) > 2:
                 c = int(new_path[-1])
                 b0 = int(new_path[-2])
-                a0 = int(new_path[-3])
-                vbc = pair_label[b0][c]["vectors"][0]
+                vbc = pair_data[b0][c].vectors[0]
+                cum_vba = (0, 0)
 
                 pidx = -2
+                px_count = 0
                 while pidx > -len(new_path):
                     b = int(new_path[pidx])
                     a = int(new_path[pidx - 1])
 
-                    vba = pair_label[a][b]["vectors"][1]
-                    if pair_label[a][b]["sm"] == False:
+                    pair_info = pair_data[a][b]
+                    vba = pair_info.vectors[1]
+                    cum_vba = (cum_vba[0] + vba[0], cum_vba[1] + vba[1])
+                    px_count += pair_info.count
+                    if pair_info.sm == False or px_count >= depth:
                         break
                     pidx -= 1
-                # if no large segment (sm = True) is found
-                else:
-                    vba = pair_label[a0][b0]["vectors"][1]
 
-                if abs(vector.norm_dot(vbc, vba)) < norm_cutoff:
+                if abs(vector.norm_dot(vbc, cum_vba)) < norm_cutoff:
                     continue
 
             visited.add(nb)
@@ -67,17 +86,17 @@ def find_unique_paths(
 
 def prune_similar_paths(
     unique_paths: set[str],
-    pair_label: list[list[dict | None]],
+    pair_data: list[list[SegmentPairData | None]],
     graph: dict[str, set[str]],
 ) -> set[str]:
-    pref_suf_paths = _prune_prefix_suffix_sm_segments(unique_paths, pair_label)
-    pruned_paths = _prune_swappable_bps(pref_suf_paths, pair_label, graph)
+    pref_suf_paths = _prune_prefix_suffix_sm_segments(unique_paths, pair_data)
+    pruned_paths = _prune_swappable_bps(pref_suf_paths, pair_data, graph)
 
     return pruned_paths
 
 
 def _prune_prefix_suffix_sm_segments(
-    unique_paths: set[str], pair_label: list[list[dict | None]]
+    unique_paths: set[str], pair_data: list[list[SegmentPairData | None]]
 ) -> set[str]:
     # prune paths that start or end with sm segment
     pruned_unique_paths = unique_paths.copy()
@@ -87,7 +106,7 @@ def _prune_prefix_suffix_sm_segments(
         l1, l2 = bp_list[-2], bp_list[-1]
 
         prefix_path = "-".join(bp_list[:-1])
-        last_is_sm = pair_label[int(l1)][int(l2)]["sm"]
+        last_is_sm = pair_data[int(l1)][int(l2)].sm
         if prefix_path in unique_paths and last_is_sm:
             pruned_unique_paths.remove(path)
             continue
@@ -95,7 +114,7 @@ def _prune_prefix_suffix_sm_segments(
         l1, l2 = bp_list[0], bp_list[1]
 
         suffix_path = "-".join(bp_list[1:])
-        first_is_sm = pair_label[int(l1)][int(l2)]["sm"]
+        first_is_sm = pair_data[int(l1)][int(l2)].sm
         if suffix_path in unique_paths and first_is_sm:
             pruned_unique_paths.remove(path)
 
@@ -109,7 +128,7 @@ def _prune_prefix_suffix_sm_segments(
 
 def _prune_swappable_bps(
     unique_paths: set[str],
-    pair_label: list[list[dict | None]],
+    pair_data: list[list[SegmentPairData | None]],
     graph: dict[str, set[str]],
 ) -> set[str]:
     pruned_paths = unique_paths.copy()
@@ -125,7 +144,7 @@ def _prune_swappable_bps(
                 if nb == bp1:
                     continue
                 # nb is a neighbor of bp2 and is a sm neighbor of bp1
-                if nb in bp1_nbs and pair_label[int(nb)][int(bp1)]["sm"]:
+                if nb in bp1_nbs and pair_data[int(nb)][int(bp1)].sm:
                     sim_bp_list = bp_list.copy()
                     sim_bp_list[i - 1] = nb
 
@@ -137,7 +156,7 @@ def _prune_swappable_bps(
                 if nb == bp2:
                     continue
                 # nb is a neighbor of bp1 and is a sm neighbor of bp2
-                if nb in bp2_nbs and pair_label[int(nb)][int(bp2)]["sm"]:
+                if nb in bp2_nbs and pair_data[int(nb)][int(bp2)].sm:
                     sim_bp_list = bp_list.copy()
                     sim_bp_list[i] = nb
 

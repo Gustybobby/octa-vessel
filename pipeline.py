@@ -1,14 +1,14 @@
-from skimage.morphology import skeletonize
-from scipy.ndimage import convolve
-from collections import defaultdict
 import numpy as np
+import matplotlib.pyplot as plt
 import cv2
 import logging
-import matplotlib.pyplot as plt
 import segment
 import vector
 import path
 import formatter
+from skimage.morphology import skeletonize
+from scipy.ndimage import convolve
+from classes.branch_point_data import BranchPointData
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
@@ -25,7 +25,7 @@ def read_binary_image(filename: str):
     return image
 
 
-def skeletonize_image(image, method="lee"):
+def skeletonize_image(image, method="lee") -> np.ndarray:
     skel = skeletonize(image // 255, method=method)
     skel = skel.astype(np.uint8)
 
@@ -33,7 +33,9 @@ def skeletonize_image(image, method="lee"):
     return skel
 
 
-def find_branch_points(skeleton_image) -> tuple[list[tuple[int, int]], dict]:
+def find_branch_points(
+    skeleton_image: np.ndarray,
+) -> tuple[list[tuple[int, int]], dict[int, BranchPointData]]:
     kernel = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.uint8)
     neighbors = convolve(skeleton_image, kernel, mode="constant", cval=0)
 
@@ -50,34 +52,21 @@ def find_branch_points(skeleton_image) -> tuple[list[tuple[int, int]], dict]:
             if bp_image[y, x] == 1 or edge_image[y, x] == 1:
                 beps.append((x, y))
 
-    cval_to_label = {}
+    cval_to_data = {}
     for i, (x, y) in enumerate(beps):
         coord_value = x * h + y
-        cval_to_label[coord_value] = {"label": str(i), "coord": (x, y)}
+        cval_to_data[coord_value] = BranchPointData(label=str(i), coord=(x, y))
 
     logging.info("found " + str(len(beps)) + " branch edge points")
-    return beps, cval_to_label
-
-
-def construct_neighborhood_graph(
-    pair_label: list[list[dict | None]],
-) -> dict[str, set[str]]:
-    graph = defaultdict(set)
-    for l1 in range(len(pair_label)):
-        for l2 in range(len(pair_label[l1])):
-            if pair_label[l1][l2]:
-                graph[str(l1)].add(str(l2))
-                graph[str(l2)].add(str(l1))
-
-    return graph
+    return beps, cval_to_data
 
 
 if __name__ == "__main__":
-    binary_image = read_binary_image("test_images\processed_pdr (72)_0.jpg")
+    binary_image = read_binary_image("test_images\processed_pdr (114)_0.jpg")
 
     skeleton = skeletonize_image(binary_image, "lee")
 
-    branching_points, cval_label_dict = find_branch_points(skeleton)
+    branching_points, cval_data_dict = find_branch_points(skeleton)
 
     hbeps_image = formatter.highlight_branch_points(skeleton, branching_points)
     plt.imshow(hbeps_image)
@@ -85,30 +74,28 @@ if __name__ == "__main__":
 
     segments = segment.find_branch_segments(skeleton, branching_points)
 
-    pair_label_arr = segment.find_segment_pair_labels(
-        segments, cval_label_dict, sm_threshold=5
+    pair_data_arr = segment.find_segment_pair_labels(
+        segments, cval_data_dict, sm_threshold=5
     )
     segment.extend_connected_branch_points(
-        segments, pair_label_arr, branching_points, cval_label_dict, skeleton.shape
+        segments, pair_data_arr, branching_points, cval_data_dict, skeleton.shape
     )
 
-    vector.calc_pairs_end_vectors(segments, branching_points, pair_label_arr, depth=10)
+    vector.calc_pairs_end_vectors(segments, branching_points, pair_data_arr, depth=5)
 
-    neighbor_graph = construct_neighborhood_graph(pair_label_arr)
+    neighbor_graph = path.construct_neighborhood_graph(pair_data_arr)
 
     # cutoff higher = more_smooth_path
     unique_paths = path.find_unique_paths(
-        neighbor_graph, pair_label_arr, norm_cutoff=0.8
+        neighbor_graph, pair_data_arr, norm_cutoff=0.75, depth=5
     )
 
-    unique_paths = path.prune_similar_paths(
-        unique_paths, pair_label_arr, neighbor_graph
-    )
+    unique_paths = path.prune_similar_paths(unique_paths, pair_data_arr, neighbor_graph)
 
     segment.segment_union(
         unique_paths,
         segments,
-        pair_label_arr,
+        pair_data_arr,
         skeleton,
         branching_points,
         save=True,

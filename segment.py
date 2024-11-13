@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
 import logging
-from tqdm import trange
 import matplotlib.pyplot as plt
+from tqdm import trange
+from classes.branch_point_data import BranchPointData
+from classes.segment_pair_data import SegmentPairData
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
@@ -12,7 +14,6 @@ logging.basicConfig(
 
 
 def find_branch_segments(skeleton_image, beps: list[tuple[int, int]]):
-    logging.info("start labeling connected components (segments)")
     beps_overlay = np.zeros(skeleton_image.shape, dtype=np.uint8)
     for x, y in beps:
         beps_overlay[y, x] = 255
@@ -28,7 +29,9 @@ def find_branch_segments(skeleton_image, beps: list[tuple[int, int]]):
 
 
 def find_segment_pair_labels(
-    branch_segments: list, cval_to_label: dict, sm_threshold: int
+    branch_segments: list[np.ndarray],
+    cval_to_data: dict[int, BranchPointData],
+    sm_threshold: int,
 ):
     logging.info("finding segment branch edge points")
     cnn_beps_list = []
@@ -36,11 +39,13 @@ def find_segment_pair_labels(
     for i in trange(len(branch_segments)):
         segment = branch_segments[i]
         h, w = segment.shape
+        assert isinstance(h, int), "h is not int"
+        assert isinstance(w, int), "w is not int"
 
         non_zeros = cv2.findNonZero(segment)
-        stack = [non_zeros[0][0]]
-        visited = set()
-        cnn_beps = set()
+        stack: list[tuple[int, int]] = [non_zeros[0][0]]
+        visited: set[int] = set()
+        cnn_beps: set[str] = set()
         while stack:
             x_curr, y_curr = stack.pop()
 
@@ -53,8 +58,8 @@ def find_segment_pair_labels(
                 continue
             visited.add(coord_value_current)
 
-            if coord_value_current in cval_to_label:
-                cnn_beps.add(cval_to_label[coord_value_current]["label"])
+            if coord_value_current in cval_to_data:
+                cnn_beps.add(cval_to_data[coord_value_current].label)
                 continue
 
             if segment[y_curr, x_curr] == 0:
@@ -70,29 +75,34 @@ def find_segment_pair_labels(
             print(cnn_beps)
             raise Exception("something is wrong")
         elif len(cnn_beps) == 1:
-            cnn_beps = list(cnn_beps)
+            cnn_beps: list[str] = list(cnn_beps)
             cnn_beps.append(cnn_beps[0])
 
         pair = tuple(sorted(list(cnn_beps), key=int))
         cnn_beps_list.append(pair)
         sm_list.append(len(non_zeros) + 2 < sm_threshold)
 
-    num_bps = len(cval_to_label)
-    pair_label: list[list[dict | None]] = [
+    num_bps = len(cval_to_data)
+    pair_data: list[list[SegmentPairData | None]] = [
         [None for _ in range(num_bps)] for _ in range(num_bps)
     ]
     for i, (l1, l2) in enumerate(cnn_beps_list):
         l1, l2 = int(l1), int(l2)
-        pair_label[l1][l2] = {"label": i, "sm": sm_list[i]}
-        pair_label[l2][l1] = {"label": i, "sm": sm_list[i]}
-    return pair_label
+        pair_data[l1][l2] = SegmentPairData(
+            label=i,
+            sm=sm_list[i],
+            ext=False,
+            count=cv2.countNonZero(branch_segments[i]),
+        )
+        pair_data[l2][l1] = pair_data[l1][l2].copy()
+    return pair_data
 
 
 def extend_connected_branch_points(
     branch_segments: list,
-    pair_label: list[list[dict | None]],
+    pair_data: list[list[SegmentPairData | None]],
     beps: list[tuple[int, int]],
-    cval_to_label: dict,
+    cval_to_data: dict[int, BranchPointData],
     shape: tuple[int, int],
 ):
     h, _ = shape
@@ -103,20 +113,24 @@ def extend_connected_branch_points(
                 if dx == dy == 0:
                     continue
                 coord_val = (x + dx) * h + (y + dy)
-                if coord_val in cval_to_label:
-                    nb = cval_to_label[coord_val]["label"]
+                if coord_val in cval_to_data:
+                    nb = cval_to_data[coord_val].label
                     l1, l2 = tuple(sorted([nb, str(i)], key=int))
                     l1, l2 = int(l1), int(l2)
 
-                    if pair_label[l1][l2]:
+                    if pair_data[l1][l2]:
                         continue
 
-                    pair_label[l1][l2] = {
+                    pair_data[l1][l2] = {
                         "label": len(branch_segments),
                         "sm": True,
                         "ext": True,
+                        "count": 2,
                     }
-                    pair_label[l2][l1] = pair_label[l1][l2].copy()
+                    pair_data[l1][l2] = SegmentPairData(
+                        label=len(branch_segments), sm=True, ext=True, count=2
+                    )
+                    pair_data[l2][l1] = pair_data[l1][l2].copy()
 
                     segment = np.zeros(shape, dtype=np.uint8)
                     segment[y, x] = 255
@@ -128,8 +142,8 @@ def extend_connected_branch_points(
 
 def segment_union(
     unique_paths: set[str],
-    segments: list,
-    pair_label: list[list[dict | None]],
+    segments: list[np.ndarray],
+    pair_data: list[list[SegmentPairData | None]],
     skeleton: np.ndarray,
     beps: list[tuple[int, int]],
     save=False,
@@ -153,7 +167,7 @@ def segment_union(
         for j in range(start, len(p_list)):
             bp1, bp2 = int(p_list[j - 1]), int(p_list[j])
 
-            segment = segments[pair_label[bp1][bp2]["label"]]
+            segment = segments[pair_data[bp1][bp2].label]
             (x1, y1), (x2, y2) = beps[bp1], beps[bp2]
             segment[y1, x1] = segment[y2, x2] = 255
             img += segment
