@@ -82,8 +82,9 @@ def find_segment_pair_labels(
         [None for _ in range(num_bps)] for _ in range(num_bps)
     ]
     for i, (l1, l2) in enumerate(cnn_beps_list):
-        pair_label[int(l1)][int(l2)] = {"label": i, "sm": sm_list[i]}
-        pair_label[int(l2)][int(l1)] = {"label": i, "sm": sm_list[i]}
+        l1, l2 = int(l1), int(l2)
+        pair_label[l1][l2] = {"label": i, "sm": sm_list[i]}
+        pair_label[l2][l1] = {"label": i, "sm": sm_list[i]}
     return pair_label
 
 
@@ -105,18 +106,17 @@ def extend_connected_branch_points(
                 if coord_val in cval_to_label:
                     nb = cval_to_label[coord_val]["label"]
                     l1, l2 = tuple(sorted([nb, str(i)], key=int))
-                    if pair_label[int(l1)][int(l2)]:
+                    l1, l2 = int(l1), int(l2)
+
+                    if pair_label[l1][l2]:
                         continue
-                    pair_label[int(l1)][int(l2)] = {
+
+                    pair_label[l1][l2] = {
                         "label": len(branch_segments),
                         "sm": True,
                         "ext": True,
                     }
-                    pair_label[int(l2)][int(l1)] = {
-                        "label": len(branch_segments),
-                        "sm": True,
-                        "ext": True,
-                    }
+                    pair_label[l2][l1] = pair_label[l1][l2].copy()
 
                     segment = np.zeros(shape, dtype=np.uint8)
                     segment[y, x] = 255
@@ -169,8 +169,10 @@ def segment_union(
 
         if save:
             plt.imsave(
-                "res/" + u_path + ".png",
+                "res/" + str(count) + ".png",
                 (img.astype(np.uint16) + (skeleton * 128)) if overlay else img,
             )
     if save:
         logging.info("saved " + str(count) + " paths")
+    else:
+        logging.info("found final " + str(count) + " paths")

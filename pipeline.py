@@ -73,7 +73,7 @@ def construct_neighborhood_graph(
 
 
 if __name__ == "__main__":
-    binary_image = read_binary_image("test_images\processed_pdr (71)_0.jpg")
+    binary_image = read_binary_image("test_images\processed_pdr (72)_0.jpg")
 
     skeleton = skeletonize_image(binary_image, "lee")
 
@@ -98,13 +98,12 @@ if __name__ == "__main__":
 
     # cutoff higher = more_smooth_path
     unique_paths = path.find_unique_paths(
-        neighbor_graph, pair_label_arr, norm_cutoff=0.707
+        neighbor_graph, pair_label_arr, norm_cutoff=0.8
     )
 
-    last_unique_len = 0
-    while last_unique_len != len(unique_paths):
-        last_unique_len = len(unique_paths)
-        unique_paths = path.prune_similar_paths(unique_paths, pair_label_arr)
+    unique_paths = path.prune_similar_paths(
+        unique_paths, pair_label_arr, neighbor_graph
+    )
 
     segment.segment_union(
         unique_paths,
@@ -113,5 +112,5 @@ if __name__ == "__main__":
         skeleton,
         branching_points,
         save=True,
-        overlay=False,
+        overlay=True,
     )
