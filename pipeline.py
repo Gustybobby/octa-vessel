@@ -61,9 +61,11 @@ def find_branch_points(
     return beps, cval_to_data
 
 
+IMAGE_PATH = "test_images\processed_pdr (80)_0.jpg"
+
 SM_THRESHOLD = 5  # px count to determine if segment is small
 VECTOR_DEPTH = 5  # depth from the end of segments to calculate the vectors
-NORM_CUTOFF = 0.75  # cosine of angle, range: (0,1)
+NORM_CUTOFF = 0.75  # cosine of angle to cutoff if less than this value, range: (0,1)
 FRAC_LENGTH_CUTOFF = 0.05  # fraction of width to determine if the segment union is too small to be included in the results, range: (0,1)
 SAVE = False  # should save the results
 SAVE_DIR = "res"  # save directory
@@ -72,7 +74,7 @@ SAVE_WITH_OVERLAY = True  # should show skeleton overlay
 DISPLAY_HIGHLIGHTED_SKELETON = False
 
 if __name__ == "__main__":
-    binary_image = read_binary_image("test_images\processed_pdr (114)_0.jpg")
+    binary_image = read_binary_image(IMAGE_PATH)
 
     skeleton = skeletonize_image(binary_image, "lee")
 
