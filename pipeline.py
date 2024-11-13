@@ -61,6 +61,61 @@ def find_branch_points(
     return beps, cval_to_data
 
 
+def extract_path_permutations(
+    image_path: str,
+    display_highlight: bool,
+    sm_threshold: int,
+    depth: int,
+    norm_cutoff: float,
+    frac_length_cutoff: float,
+    save: bool,
+    overlay: bool,
+    save_dir: str,
+):
+    binary_image = read_binary_image(image_path)
+
+    skeleton = skeletonize_image(binary_image, "lee")
+
+    branching_points, cval_data_dict = find_branch_points(skeleton)
+
+    if display_highlight:
+        hbeps_image = formatter.highlight_branch_points(skeleton, branching_points)
+        plt.imshow(hbeps_image)
+        plt.show()
+
+    segments = segment.find_branch_segments(skeleton, branching_points)
+
+    pair_data_arr = segment.find_segment_pair_labels(
+        segments, cval_data_dict, sm_threshold
+    )
+    segment.extend_connected_branch_points(
+        segments, pair_data_arr, branching_points, cval_data_dict, skeleton.shape
+    )
+
+    vector.calc_pairs_end_vectors(segments, branching_points, pair_data_arr, depth)
+
+    neighbor_graph = path.construct_neighborhood_graph(pair_data_arr)
+
+    # cutoff higher = more_smooth_path
+    unique_paths = path.find_unique_paths(
+        neighbor_graph, pair_data_arr, norm_cutoff, depth
+    )
+
+    unique_paths = path.prune_similar_paths(unique_paths, pair_data_arr, neighbor_graph)
+
+    segment.segment_union(
+        unique_paths,
+        segments,
+        pair_data_arr,
+        skeleton,
+        branching_points,
+        frac_length_cutoff,
+        save_dir,
+        save,
+        overlay,
+    )
+
+
 IMAGE_PATH = "test_images\processed_pdr (80)_0.jpg"
 
 SM_THRESHOLD = 5  # px count to determine if segment is small
@@ -74,47 +129,14 @@ SAVE_WITH_OVERLAY = True  # should show skeleton overlay
 DISPLAY_HIGHLIGHTED_SKELETON = False
 
 if __name__ == "__main__":
-    binary_image = read_binary_image(IMAGE_PATH)
-
-    skeleton = skeletonize_image(binary_image, "lee")
-
-    branching_points, cval_data_dict = find_branch_points(skeleton)
-
-    if DISPLAY_HIGHLIGHTED_SKELETON:
-        hbeps_image = formatter.highlight_branch_points(skeleton, branching_points)
-        plt.imshow(hbeps_image)
-        plt.show()
-
-    segments = segment.find_branch_segments(skeleton, branching_points)
-
-    pair_data_arr = segment.find_segment_pair_labels(
-        segments, cval_data_dict, sm_threshold=SM_THRESHOLD
-    )
-    segment.extend_connected_branch_points(
-        segments, pair_data_arr, branching_points, cval_data_dict, skeleton.shape
-    )
-
-    vector.calc_pairs_end_vectors(
-        segments, branching_points, pair_data_arr, depth=VECTOR_DEPTH
-    )
-
-    neighbor_graph = path.construct_neighborhood_graph(pair_data_arr)
-
-    # cutoff higher = more_smooth_path
-    unique_paths = path.find_unique_paths(
-        neighbor_graph, pair_data_arr, norm_cutoff=NORM_CUTOFF, depth=VECTOR_DEPTH
-    )
-
-    unique_paths = path.prune_similar_paths(unique_paths, pair_data_arr, neighbor_graph)
-
-    segment.segment_union(
-        unique_paths,
-        segments,
-        pair_data_arr,
-        skeleton,
-        branching_points,
+    extract_path_permutations(
+        image_path=IMAGE_PATH,
+        display_highlight=DISPLAY_HIGHLIGHTED_SKELETON,
+        sm_threshold=SM_THRESHOLD,
+        depth=VECTOR_DEPTH,
+        norm_cutoff=NORM_CUTOFF,
         frac_length_cutoff=FRAC_LENGTH_CUTOFF,
-        save_dir=SAVE_DIR,
         save=SAVE,
         overlay=SAVE_WITH_OVERLAY,
+        save_dir=SAVE_DIR,
     )
