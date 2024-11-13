@@ -184,10 +184,12 @@ def segment_union(
         last_path = u_path
 
         if save:
-            plt.imsave(
-                save_dir + "/" + str(count) + ".png",
-                (img.astype(np.uint16) + (skeleton * 128)) if overlay else img,
-            )
+            save_path = save_dir + "/" + str(count) + ".png"
+            if overlay:
+                overlayed_image = img.astype(np.uint16) + (skeleton * 128)
+                plt.imsave(save_path, overlayed_image)
+            else:
+                cv2.imwrite(save_path, img)
     if save:
         logging.info("saved " + str(count) + " paths")
     else:
