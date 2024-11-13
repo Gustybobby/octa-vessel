@@ -87,8 +87,8 @@ def _prune_prefix_suffix_sm_segments(
         l1, l2 = bp_list[-2], bp_list[-1]
 
         prefix_path = "-".join(bp_list[:-1])
-        last_is_ext_sm = pair_label[int(l1)][int(l2)]["sm"]
-        if prefix_path in unique_paths and last_is_ext_sm:
+        last_is_sm = pair_label[int(l1)][int(l2)]["sm"]
+        if prefix_path in unique_paths and last_is_sm:
             pruned_unique_paths.remove(path)
             continue
 
