@@ -271,7 +271,7 @@ def main():
 
     # Step 2: Find branch and edge points
     branching_points = graph_analysis.find_branch_edge_points(
-        skeleton, method="MATRIX_DEGREE", display_beps=False
+        skeleton, display_beps=False
     )
 
     # Step 3: Create neighborhood graph

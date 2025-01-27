@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def find_branch_edge_points(
-    skeleton_image: np.ndarray, method: str = "MATRIX_DEGREE", display_beps=False
+    skeleton_image: np.ndarray, display_beps=False
 ) -> list[tuple[int, int]]:
     """Identifies branch points and edge points in the skeleton image. method = ("SELEMS","MATRIX_DEGREE")"""
     logger.info("Finding branch and edge points in the skeleton")
@@ -18,29 +18,8 @@ def find_branch_edge_points(
     kernel = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.uint8)
     neighbors = convolve(skeleton_image, kernel, mode="constant", cval=0)
 
-    if method == "SELEMS":
-        # this method scan throughs branching point templates
-        selems = list()
-        selems.append(np.array([[0, 1, 0], [1, 1, 1], [0, 0, 0]]))
-        selems.append(np.array([[1, 0, 1], [0, 1, 0], [1, 0, 0]]))
-        selems.append(np.array([[1, 0, 1], [0, 1, 0], [0, 1, 0]]))
-        selems.append(np.array([[0, 1, 0], [1, 1, 0], [0, 0, 1]]))
-        selems.append(np.array([[0, 0, 1], [1, 1, 1], [0, 1, 0]]))
-        selems = [np.rot90(selems[i], k=j) for i in range(5) for j in range(4)]
-        selems.append(np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]]))
-        selems.append(np.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]]))
-
-        bp_image = np.zeros_like(skeleton_image, dtype=bool)
-        for selem in selems:
-            bp_image |= binary_hit_or_miss(skeleton_image, selem)
-
-    elif method == "MATRIX_DEGREE":
-        # this method look for neighborhood with matrix degree > 2
-        bp_image = (skeleton_image == 1) & (neighbors > 2)
-        bp_image = bp_image.astype(np.uint8)
-
-    else:
-        raise Exception("invalid method")
+    bp_image = (skeleton_image == 1) & (neighbors > 2)
+    bp_image = bp_image.astype(np.uint8)
 
     edge_image = (skeleton_image == 1) & (neighbors == 1)
     edge_image = edge_image.astype(np.uint8)
@@ -49,10 +28,7 @@ def find_branch_edge_points(
     h, w = bp_image.shape
     for y in range(h):
         for x in range(w):
-            isBp = (method == "SELEMS" and bp_image[y][x] == True) or (
-                method != "SELEMS" and bp_image[y, x] == 1
-            )
-            if isBp or edge_image[y, x] == 1:
+            if bp_image[y, x] == 1 or edge_image[y, x] == 1:
                 beps.append((x, y))
 
     logger.info(f"Found {len(beps)} branch and edge points")
