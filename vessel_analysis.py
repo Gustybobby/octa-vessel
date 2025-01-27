@@ -4,6 +4,7 @@ import numpy as np
 from collections import deque
 from scipy.sparse import csr_matrix
 import logging
+from utils import edge
 
 logger = logging.getLogger(__name__)
 
@@ -98,3 +99,51 @@ def extract_vessel_segments(
 
     logger.info(f"Extracted {len(vessel_segments)} vessel segments")
     return vessel_segments, points
+
+
+def find_single_level_paths(graph: dict[str, set]):
+    single_level_paths = []
+    for u in graph:
+        for v in graph[u]:
+            if u < v:
+                single_level_paths.append((u, v))
+    return single_level_paths
+
+
+def get_path_length(path_tuple, edge_lengths):
+    path_length = 0
+    for i in range(len(path_tuple) - 1):
+        path_length += edge.get_edge_length(
+            path_tuple[i], path_tuple[i + 1], edge_lengths
+        )
+    return path_length
+
+
+def calculate_TI(branching_points, edge_lengths, path_tuple):
+
+    path_length = get_path_length(path_tuple, edge_lengths)
+
+    start = branching_points[int(path_tuple[0])]
+    end = branching_points[int(path_tuple[-1])]
+
+    return path_length / np.sqrt((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2)
+
+
+def find_edges_lengths_and_tortuosities(
+    vessel_segments: dict[str, np.ndarray], branching_points: list[tuple[int, int]]
+) -> tuple[dict[str, int], dict[str, np.float64]]:
+
+    edge_lengths: dict[str, int] = {}
+
+    # path tuple : TI score (actual length / euclidean distance)
+    tortuosity_index: dict[str, np.float64] = {}
+
+    for edge_key, segment_img in vessel_segments.items():
+        edge_lengths[edge_key] = get_length_of_vessel(segment_img)
+
+        path_tuple = edge_key.split(" - ")
+        tortuosity_index[edge_key] = calculate_TI(
+            branching_points, edge_lengths, path_tuple
+        )
+
+    return edge_lengths, tortuosity_index

@@ -63,7 +63,6 @@ def fit_tangents_at_junction(
     path1: str,
     path2: str,
     vessel_segments: dict,
-    num_points: int = 3,
     display_plot: bool = False,
 ) -> float:
     """

@@ -19,6 +19,7 @@ MAX_RECURSION_DEPTH = (
 SMALL_SEGMENT_LENGTH = 2  # pixels (<= will be considered a small segment) means they will be skipped from the calculation of the angles
 NUM_POINTS = 4  # Points saved to calculate tangents (each tangent will be formed from this many continuous points)
 MINIMUM_FINAL_LENGTH = 50  # segments lesser than this will not be in the final images
+LEAF_BRANCH_LENGTH = 10
 
 # Making crop TRUE will also produce a log file which contains the filename, and the coordinates of the pixels in the original image representing the vessel
 CROP = True  # will save the images by cropping so only the vessel represented by the path is saved

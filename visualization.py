@@ -4,12 +4,11 @@ import os
 import cv2
 import numpy as np
 import logging
-from tqdm import tqdm  # Import tqdm
+from tqdm import tqdm
 from typing import Dict
 import main
 import csv
-from image_similarity_remove import remove_very_similar_images_with_downsample
-from config import CROP, MARGIN, REMOVE_DUPLICATES, MSE_THRESHOLD, DEBUG_DUPLICATES
+from config import CROP, MARGIN
 
 logger = logging.getLogger(__name__)
 
