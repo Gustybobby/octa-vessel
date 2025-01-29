@@ -8,6 +8,7 @@ from config import (
     INPUT_IMAGE,
     OVERLAY_IMAGE,
     OVERLAY_INTENSITY,
+    SHOW_PRUNED_IMAGE,
     ANGLE_THRESHOLD,
     MAX_RECURSION_DEPTH,
     SMALL_SEGMENT_LENGTH,
@@ -26,6 +27,8 @@ from graph_analysis.find_path_with_pruning import find_paths_with_pruning
 from utils.edge import get_edge_length
 import vessel_analysis
 import visualization
+from matplotlib import pyplot as plt
+import numpy
 
 
 def setup_logging():
@@ -47,7 +50,9 @@ def main():
     branching_points = find_branch_edge_points(skeleton, logger, display_beps=False)
 
     # Step 3: Create neighborhood graph
-    neighbor_graph, _ = find_neighborhood_graph(skeleton, branching_points, logger)
+    neighbor_graph, info_dict = find_neighborhood_graph(
+        skeleton, branching_points, logger
+    )
 
     # Step 4: Extract vessel segments
     single_level_paths = vessel_analysis.find_single_level_paths(neighbor_graph)
@@ -68,6 +73,16 @@ def main():
         > 0
     ):
         continue
+
+    if SHOW_PRUNED_IMAGE:
+        pruned_image = numpy.maximum.reduce(
+            [vessel_segments[edge] for edge in edge_lengths]
+        )
+        for x, y in branching_points:
+            if info_dict[x * pruned_image.shape[0] + y]["label"] in neighbor_graph:
+                pruned_image[y, x] += 128
+        plt.imshow(pruned_image)
+        plt.show()
 
     # Execute path finding
     valid_path_list = find_paths_with_pruning(
