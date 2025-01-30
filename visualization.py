@@ -71,7 +71,11 @@ def save_images(
     small_removed = 0
 
     sorted_path_keys = sorted(valid_paths.keys(), key=key)
-    path_log_file = open("vessels_localized_log.csv", "a", newline="")
+    path_log_file = open(
+        "\\".join(result_dir.split("\\")[:2]) + "\\vessels_localized_log.csv",
+        "a",
+        newline="",
+    )
     writer = csv.writer(path_log_file)
     for path in tqdm(
         sorted_path_keys, desc=f"Saving images to {result_dir}", unit="image"
