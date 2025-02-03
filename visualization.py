@@ -66,17 +66,24 @@ def save_images(
 ):
     """Saves the vessel segment images to the result directory without borders."""
     logger.info("Saving vessel segment images")
+
+    os.makedirs(result_dir, exist_ok=True)
+    os.makedirs(os.path.join(result_dir, "tortuous"), exist_ok=True)
+    os.makedirs(os.path.join(result_dir, "non_tortuous"), exist_ok=True)
+    os.makedirs(os.path.join(result_dir, "unknown"), exist_ok=True)
+
     i = 0
     counts = [0, 0, 0]
     small_removed = 0
 
     sorted_path_keys = sorted(valid_paths.keys(), key=key)
     path_log_file = open(
-        "\\".join(result_dir.split("\\")[:2]) + "\\vessels_localized_log.csv",
+        "\\".join(result_dir.split("\\")[:-1]) + "\\vessels_localized_log.csv",
         "a",
         newline="",
     )
     writer = csv.writer(path_log_file)
+
     for path in tqdm(
         sorted_path_keys, desc=f"Saving images to {result_dir}", unit="image"
     ):  # Construct a filename from the path tuple

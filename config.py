@@ -1,7 +1,6 @@
 # config.py
 
 import logging
-import os
 
 # Logging Configuration
 LOG_LEVEL = logging.INFO
@@ -9,7 +8,7 @@ LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Visualization Parameters
 OVERLAY_IMAGE = True  # set to overlay original vessel image over the segments
-OVERLAY_INTENSITY = 0.5  # Range: 0 - 1
+OVERLAY_INTENSITY = 0.3  # Range: 0 - 1
 SHOW_PRUNED_IMAGE = False
 
 # Vessel Analysis Parameters
@@ -29,15 +28,3 @@ MARGIN = 50  # is the margin after cropping the image that we will use.
 REMOVE_DUPLICATES = True  # Removes duplicates at the end by comparing them through MSE
 MSE_THRESHOLD = 0.15  # <= to this will be considered a duplicate
 DEBUG_DUPLICATES = False  # shows each duplicate as we encounter them
-
-# File Paths
-IMAGE_FILENAME = "processed_pdr (72)_0.jpg"
-RESULT_DIR = os.path.join("extraction", IMAGE_FILENAME.split(".")[0], "result")
-INPUT_IMAGE = os.path.join("test_images", IMAGE_FILENAME)
-
-
-# Ensure result directory exists
-os.makedirs(RESULT_DIR, exist_ok=True)
-os.makedirs(os.path.join(RESULT_DIR, "tortuous"), exist_ok=True)
-os.makedirs(os.path.join(RESULT_DIR, "non_tortuous"), exist_ok=True)
-os.makedirs(os.path.join(RESULT_DIR, "unknown"), exist_ok=True)

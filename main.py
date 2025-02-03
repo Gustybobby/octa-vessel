@@ -4,8 +4,6 @@ import logging
 from config import (
     LOG_LEVEL,
     LOG_FORMAT,
-    RESULT_DIR,
-    INPUT_IMAGE,
     OVERLAY_IMAGE,
     OVERLAY_INTENSITY,
     SHOW_PRUNED_IMAGE,
@@ -29,6 +27,7 @@ import vessel_analysis
 import visualization
 from matplotlib import pyplot as plt
 import numpy
+import os
 
 
 def setup_logging():
@@ -38,12 +37,12 @@ def setup_logging():
     return logger
 
 
-def main():
+def main(input_image: str, result_dir: str):
     logger = setup_logging()
     logger.info("Starting vessel analysis pipeline")
 
     # Step 1: Read and preprocess the image
-    binary_image = read_binary_image(INPUT_IMAGE, logger)
+    binary_image = read_binary_image(input_image, logger)
     skeleton = skeletonize_image(binary_image, method="lee", logger=logger)
 
     # Step 2: Find branch and edge points
@@ -110,7 +109,7 @@ def main():
     visualization.save_images(
         "multi",
         valid_paths,
-        RESULT_DIR,
+        result_dir,
         OVERLAY_IMAGE,
         OVERLAY_INTENSITY,
         skeleton,
@@ -120,7 +119,7 @@ def main():
     visualization.save_images(
         "single",
         vessel_segments,
-        RESULT_DIR,
+        result_dir,
         OVERLAY_IMAGE,
         OVERLAY_INTENSITY,
         skeleton,
@@ -131,4 +130,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    DATASET_DIR = "Dataset/Healthy_TUH_processed"
+    for filename in os.listdir(DATASET_DIR):
+        main(
+            os.path.join(DATASET_DIR, filename),
+            os.path.join("extraction", DATASET_DIR, filename.split(".")[0], "result"),
+        )
