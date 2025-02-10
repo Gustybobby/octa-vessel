@@ -1,37 +1,55 @@
 import numpy as np
-import logging
 from tqdm import tqdm
-from utils.edge import get_edge_key
+from graph.extract_segments import get_segment_key
 from image_processing.image_similarity import downsample_image, mse
 
 
 def build_distinct_images(
-    valid_path_list: list[tuple[str]],
-    vessel_segments: dict[str, np.ndarray],
+    valid_paths: set[tuple[str]],
+    segments: dict[tuple[str, str], set[tuple[int, int]]],
     mse_threshold: float,
-    logger: logging.Logger,
+    shape: tuple[int, int],
 ):
-    valid_paths = {}
+    segment_images = {}
+    for key, pixels in segments.items():
+        image = np.zeros(shape)
+        for x, y in pixels:
+            image[y, x] = 255
+        segment_images[key] = image
+
+    valid_paths_images = {}
     downsampled_images = {}
-    for path_tuple in tqdm(valid_path_list, desc="Building images"):
-        segments = [
-            vessel_segments[get_edge_key(path_tuple[i], path_tuple[i + 1])].astype(
-                np.uint8
-            )
-            for i in range(len(path_tuple) - 1)
-        ]
-        image = np.maximum.reduce(segments)
+
+    for path in tqdm(
+        sorted(list(valid_paths), key=lambda x: (len(x), x)), desc="Building images"
+    ):
+        start = 0
+        cached_image = np.zeros(shape)
+        for i in range(1, len(path)):
+            sub_path = tuple(path[: i + 1])
+            if sub_path in valid_paths_images:
+                cached_image = valid_paths_images[sub_path].copy()
+                start = i
+
+        image = np.maximum.reduce(
+            [
+                segment_images[get_segment_key(path[i], path[i + 1])].astype(np.uint8)
+                for i in range(start, len(path) - 1)
+            ]
+        )
+        image = np.maximum(image, cached_image)
+
         downsampled = downsample_image(image, 256)
 
         if _is_image_similar(downsampled, downsampled_images, mse_threshold):
             continue
 
-        valid_paths[path_tuple] = image
-        downsampled_images[path_tuple] = downsampled
+        valid_paths_images[path] = image
+        downsampled_images[path] = downsampled
 
-    logger.info(f"Total distinct images: {len(valid_paths)}")
+    print(f"Total distinct images: {len(valid_paths_images)}")
 
-    return valid_paths
+    return valid_paths_images
 
 
 def _is_image_similar(

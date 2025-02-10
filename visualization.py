@@ -6,7 +6,6 @@ import numpy as np
 import logging
 from tqdm import tqdm
 from typing import Dict
-import main
 import csv
 from config import CROP, MARGIN
 
@@ -54,14 +53,12 @@ def crop_image(image, margin, log_file, filename, writer):
 
 
 def save_images(
-    start_str: str,
     valid_paths: Dict[tuple[str, ...], np.ndarray],
     result_dir: str,
     OVERLAY_IMAGE,
     OVERLAY_INTENSITY,
     skeleton,
     tortuosity_index,
-    get_edge_length=None,
     key=None,
 ):
     """Saves the vessel segment images to the result directory without borders."""
@@ -87,18 +84,10 @@ def save_images(
     for path in tqdm(
         sorted_path_keys, desc=f"Saving images to {result_dir}", unit="image"
     ):  # Construct a filename from the path tuple
-        filename = start_str + " - " + str(i) + ".png"
+        filename = str(i) + ".png"
         sub_dir = classify_tortuous(path, tortuosity_index, counts)
 
         filepath = os.path.join(result_dir, sub_dir, filename)
-        # print(filepath)
-        if start_str == "single":
-            start, end = path.split(" - ")
-            length = get_edge_length(start, end)
-            # print(length, end = " ")
-            if length <= main.MINIMUM_FINAL_LENGTH:
-                small_removed += 1
-                continue
 
         if OVERLAY_IMAGE:
             overlayed_image = valid_paths[path].astype(np.uint16) + (

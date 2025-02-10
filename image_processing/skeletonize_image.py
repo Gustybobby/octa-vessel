@@ -1,18 +1,15 @@
-import numpy as np
 from skimage.morphology import skeletonize
-import logging
+import numpy as np
 
 
-def skeletonize_image(
-    image: np.ndarray, method: str = "lee", logger: logging.Logger = None
-) -> np.ndarray:
-    """Skeletonizes the binary image using the specified method."""
+def skeletonize_image(image: np.ndarray, method: str = "lee") -> np.ndarray:
+    """Skeletonizes the binary image using the specified method. {lee,zhang}"""
 
-    logger.info(f"Skeletonizing image using method: {method}")
+    print(f"[SKELETONIZE] Skeletonizing image using method: {method}")
 
-    skel = skeletonize(image // 255, method=method)
-    skel = skel.astype(np.uint8)
+    skeleton = skeletonize(image // 255, method=method)
+    skeleton = skeleton.astype(np.uint8)
 
-    logger.info("Image skeletonization complete")
+    print("[SKELETONIZE] Image skeletonization complete")
 
-    return skel
+    return skeleton
