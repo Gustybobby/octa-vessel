@@ -20,3 +20,6 @@ CROP = True  # will save the images by cropping so only the vessel represented b
 MARGIN = 50  # is the margin after cropping the image that we will use.
 
 MSE_THRESHOLD = 0.15  # <= to this will be considered a duplicate
+
+NTV_THRESHOLD = 1.05
+TV_THRESHOLD = 1.3

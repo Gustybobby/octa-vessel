@@ -51,12 +51,14 @@ def main(image_path: str, result_dir: str):
         config.OVERLAY_INTENSITY,
         skeleton,
         tortuosity_index,
+        config.NTV_THRESHOLD,
+        config.TV_THRESHOLD,
         key=lambda x: tuple([int(n) for n in x]),
     )
 
 
 if __name__ == "__main__":
-    DATASET_DIR = "Dataset/TV_TUH_processed"
+    DATASET_DIR = "Dataset/Healthy_TUH_processed"
     for filename in os.listdir(DATASET_DIR):
         main(
             os.path.join(DATASET_DIR, filename),

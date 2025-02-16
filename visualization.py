@@ -5,21 +5,26 @@ import cv2
 import numpy as np
 import logging
 from tqdm import tqdm
-from typing import Dict
 import csv
 from config import CROP, MARGIN
 
 logger = logging.getLogger(__name__)
 
 
-def classify_tortuous(path, tortuosity_index, counts):
+def classify_tortuous(
+    path: tuple[str],
+    tortuosity_index: dict[tuple[str], float],
+    counts: list[int],
+    ntv_threshold: float,
+    tv_threshold: float,
+):
     if path not in tortuosity_index:
         raise Exception(f"TI for path {path} not calculated")
     ti = tortuosity_index[path]
-    if ti < 1.3:
+    if ti < ntv_threshold:
         counts[0] += 1
         return "non_tortuous"
-    elif ti > 1.5:
+    elif ti > tv_threshold:
         counts[1] += 1
         return "tortuous"
     else:
@@ -53,12 +58,14 @@ def crop_image(image, margin, log_file, filename, writer):
 
 
 def save_images(
-    valid_paths: Dict[tuple[str, ...], np.ndarray],
+    valid_paths: dict[tuple[str], np.ndarray],
     result_dir: str,
     OVERLAY_IMAGE,
     OVERLAY_INTENSITY,
     skeleton,
     tortuosity_index,
+    ntv_threshold: float,
+    tv_threshold: float,
     key=None,
 ):
     """Saves the vessel segment images to the result directory without borders."""
@@ -85,7 +92,9 @@ def save_images(
         sorted_path_keys, desc=f"Saving images to {result_dir}", unit="image"
     ):  # Construct a filename from the path tuple
         filename = str(i) + ".png"
-        sub_dir = classify_tortuous(path, tortuosity_index, counts)
+        sub_dir = classify_tortuous(
+            path, tortuosity_index, counts, ntv_threshold, tv_threshold
+        )
 
         filepath = os.path.join(result_dir, sub_dir, filename)
 
